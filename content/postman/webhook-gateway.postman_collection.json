@@ -1,0 +1,312 @@
+{
+  "info": {
+    "_postman_id": "58a563d4-b9a1-47b6-8564-734a6e5fc744",
+    "name": "Webhook Gateway API",
+    "description": "API collection for the Webhook Gateway. Select the `Webhook Gateway - Local` environment. Create requests save returned IDs automatically. Every accepted webhook is broadcast to all active destinations with the matching provider type.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/live"
+          }
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/ready"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          { "key": "key", "value": "X-Admin-Api-Key", "type": "string" },
+          { "key": "value", "value": "{{adminApiKey}}", "type": "string" },
+          { "key": "in", "value": "header", "type": "string" }
+        ]
+      },
+      "item": [
+        {
+          "name": "Endpoints",
+          "item": [
+            {
+              "name": "Create Endpoint",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const endpoint = pm.response.json();",
+                      "  pm.environment.set('endpointId', endpoint.id);",
+                      "  pm.environment.set('publicKey', endpoint.publicKey);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{endpointName}} {{provider}}\",\n  \"provider\": \"{{provider}}\",\n  \"verifyToken\": \"{{verifyToken}}\",\n  \"appSecret\": \"{{metaAppSecret}}\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/v1/admin/endpoints",
+                "description": "Supported providers: `whatsapp` and `instagram`. Saves `endpointId` and `publicKey`."
+              }
+            },
+            {
+              "name": "List Endpoints",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/v1/admin/endpoints"
+              }
+            },
+            {
+              "name": "Update Endpoint",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{endpointName}} {{provider}} - Updated\",\n  \"verifyToken\": \"{{verifyToken}}\",\n  \"appSecret\": \"{{metaAppSecret}}\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/v1/admin/endpoints/{{endpointId}}"
+              }
+            },
+            {
+              "name": "Set Endpoint Active",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"isActive\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/v1/admin/endpoints/{{endpointId}}/active"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Destinations",
+          "item": [
+            {
+              "name": "Create Destination",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  pm.environment.set('destinationId', pm.response.json().id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"{{provider}}\",\n  \"name\": \"{{destinationName}}\",\n  \"url\": \"{{destinationUrl}}\",\n  \"signingSecret\": \"{{destinationSigningSecret}}\",\n  \"headers\": {\n    \"X-Source\": \"webhook-gateway\"\n  },\n  \"timeoutMs\": 10000\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/v1/admin/destinations",
+                "description": "Supported types: `whatsapp` and `instagram`. Saves `destinationId`."
+              }
+            },
+            {
+              "name": "List Destinations",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/v1/admin/destinations"
+              }
+            },
+            {
+              "name": "Update Destination",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"{{provider}}\",\n  \"name\": \"{{destinationName}}\",\n  \"url\": \"{{destinationUrl}}\",\n  \"signingSecret\": \"{{destinationSigningSecret}}\",\n  \"timeoutMs\": 10000\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/v1/admin/destinations/{{destinationId}}"
+              }
+            },
+            {
+              "name": "Set Destination Active",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"isActive\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{baseUrl}}/v1/admin/destinations/{{destinationId}}/active"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Events & Deliveries",
+          "item": [
+            {
+              "name": "List Events",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/v1/admin/events?limit={{limit}}",
+                "description": "Limit is clamped to 1-200."
+              }
+            },
+            {
+              "name": "List Deliveries",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const deliveries = pm.response.json();",
+                      "  if (deliveries.length) pm.environment.set('deliveryId', deliveries[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/v1/admin/deliveries?limit={{limit}}",
+                "description": "Saves the newest delivery as `deliveryId`."
+              }
+            },
+            {
+              "name": "Replay Delivery",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{baseUrl}}/v1/admin/deliveries/{{deliveryId}}/replay"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Meta Webhooks",
+      "item": [
+        {
+          "name": "Verify Webhook",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/hooks/meta/{{provider}}/{{publicKey}}?hub.mode=subscribe&hub.verify_token={{verifyToken}}&hub.challenge={{hubChallenge}}"
+          }
+        },
+        {
+          "name": "Receive WhatsApp Webhook",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "exec": [
+                  "const CryptoJS = pm.require('npm:crypto-js@4.2.0');",
+                  "const body = pm.variables.replaceIn(pm.request.body.raw);",
+                  "const secret = pm.environment.get('metaAppSecret');",
+                  "pm.variables.set('metaSignature', `sha256=${CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)}`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Hub-Signature-256", "value": "{{metaSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"waba-postman\",\n      \"changes\": [\n        {\n          \"field\": \"messages\",\n          \"value\": {\n            \"messaging_product\": \"whatsapp\",\n            \"metadata\": {\n              \"display_phone_number\": \"621234567890\",\n              \"phone_number_id\": \"{{externalId}}\"\n            },\n            \"messages\": [\n              {\n                \"from\": \"6281234567890\",\n                \"id\": \"wamid.postman-example\",\n                \"timestamp\": \"1700000000\",\n                \"text\": { \"body\": \"Hello from Postman\" },\n                \"type\": \"text\"\n              }\n            ]\n          }\n        }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/hooks/meta/whatsapp/{{publicKey}}",
+            "description": "Create a WhatsApp endpoint first. The script signs the raw body using `metaAppSecret`."
+          }
+        },
+        {
+          "name": "Receive Instagram Webhook",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "exec": [
+                  "const CryptoJS = pm.require('npm:crypto-js@4.2.0');",
+                  "const body = pm.variables.replaceIn(pm.request.body.raw);",
+                  "const secret = pm.environment.get('metaAppSecret');",
+                  "pm.variables.set('metaSignature', `sha256=${CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)}`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Hub-Signature-256", "value": "{{metaSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"instagram\",\n  \"entry\": [\n    {\n      \"id\": \"{{externalId}}\",\n      \"time\": 1700000000,\n      \"messaging\": [\n        {\n          \"sender\": { \"id\": \"instagram-user-id\" },\n          \"recipient\": { \"id\": \"{{externalId}}\" },\n          \"timestamp\": 1700000000,\n          \"message\": {\n            \"mid\": \"instagram-message-id\",\n            \"text\": \"Hello from Postman\"\n          }\n        }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/hooks/meta/instagram/{{publicKey}}",
+            "description": "Create an Instagram endpoint first. The script signs the raw body using `metaAppSecret`."
+          }
+        }
+      ]
+    }
+  ]
+}

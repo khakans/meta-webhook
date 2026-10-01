@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DeliveryStatus {
+  PENDING
+  PROCESSING
+  RETRY
+  DELIVERED
+  DEAD
+  CANCELLED
+}
+
+model WebhookEndpoint {
+  id                   String         @id @default(uuid())
+  publicKey            String         @unique @default(uuid())
+  name                 String
+  provider             String
+  verifyTokenEncrypted String
+  appSecretEncrypted   String
+  isActive             Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  events               WebhookEvent[]
+
+  @@index([provider, isActive])
+}
+
+model Destination {
+  id                     String     @id @default(uuid())
+  type                   String
+  name                   String
+  url                    String
+  signingSecretEncrypted String?
+  headersEncrypted       String?
+  timeoutMs              Int        @default(10000)
+  isActive               Boolean    @default(true)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  deliveries             Delivery[]
+
+  @@index([type, isActive])
+}
+
+model WebhookEvent {
+  id         String          @id @default(uuid())
+  endpointId String
+  provider   String
+  dedupeKey  String
+  eventTypes String[]        @default([])
+  payload    Json
+  rawBody    String          @db.Text
+  status     String
+  receivedAt DateTime        @default(now())
+  endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Restrict)
+  deliveries Delivery[]
+
+  @@unique([endpointId, dedupeKey])
+  @@index([status, receivedAt])
+}
+
+model Delivery {
+  id             String         @id @default(uuid())
+  eventId        String
+  destinationId  String
+  status         DeliveryStatus @default(PENDING)
+  attempts       Int            @default(0)
+  maxAttempts    Int            @default(8)
+  nextAttemptAt  DateTime       @default(now())
+  lockedAt       DateTime?
+  lastStatusCode Int?
+  lastError      String?        @db.Text
+  deliveredAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  event          WebhookEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  destination    Destination    @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, destinationId])
+  @@index([status, nextAttemptAt])
+  @@index([destinationId, createdAt])
+}
