@@ -6,4 +6,6 @@ dist/
 coverage/
 *.log
 *.tsbuildinfo
-
+.agents
+.claude
+.windsurf
