@@ -8,7 +8,7 @@ import { decrypt, hmacHex } from '../utils/crypto.js';
 import { UrlPolicyService } from '../utils/url-policy.js';
 
 type ClaimedDelivery = Prisma.DeliveryGetPayload<{
-  include: { event: true; destination: true };
+  include: { event: { include: { endpoint: true } }; destination: true };
 }>;
 
 function retryDelayMs(attempt: number) {
@@ -75,7 +75,7 @@ export class DeliveryWorkerService {
       });
       return tx.delivery.findMany({
         where: { id: { in: ids } },
-        include: { event: true, destination: true },
+        include: { event: { include: { endpoint: true } }, destination: true },
       });
     });
   }
@@ -119,6 +119,7 @@ export class DeliveryWorkerService {
         ...customHeaders,
         'content-type': 'application/json',
         'user-agent': 'webhook-gateway/1.0',
+        'x-hub-signature-256': `sha256=${hmacHex(decrypt(event.endpoint.appSecretEncrypted), event.rawBody)}`,
         'x-webhook-provider': event.provider.toLowerCase(),
         'x-webhook-event-id': event.id,
         'x-webhook-delivery-id': delivery.id,

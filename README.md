@@ -90,6 +90,14 @@ POST /v1/admin/destinations
 
 Supported destination types are `whatsapp` and `instagram`. Add more destinations by repeating the request; each webhook is sent to every active destination whose type matches its provider.
 
+## Instagram cutover
+
+1. Create an active Instagram endpoint and destination. Set the destination URL to the application's existing webhook route. Check `GET /v1/admin/endpoints` for the endpoint's `callbackPath` and `GET /v1/admin/destinations` for an active destination with `type: "instagram"`.
+2. Start the API and worker, and check `GET /health/ready` on the public gateway host. Configure the Instagram webhook callback in Meta to `https://<gateway-host><callbackPath>` with the endpoint's verify token; subscribe to the Instagram fields used by the application. Meta's callback verification GET does not create an event.
+3. Send a real Instagram event. `GET /v1/admin/events` should contain it, then `GET /v1/admin/deliveries` should show a delivery that reaches `DELIVERED`. If events stay empty, inspect the callback URL and gateway HTTP response: unknown or inactive endpoint returns 404, and a bad signature or unexpected `object` returns 401. If events appear but deliveries stay empty, check that the Instagram destination is active.
+
+The Instagram endpoint currently accepts Meta payloads with `object: "instagram"`. If your current integration receives `object: "page"`, capture a sanitized sample first; Page messaging can also represent Facebook Messenger and must be routed deliberately.
+
 ## Delivery contract
 
 Destinations receive the original scoped Meta JSON with these headers:
@@ -100,6 +108,7 @@ X-Webhook-Event-Id
 X-Webhook-Delivery-Id
 X-Webhook-Timestamp
 X-Webhook-Signature: v1=<hex-hmac>   # when a signingSecret is configured
+X-Hub-Signature-256: sha256=<hex-hmac> # signed with the Meta app secret for the scoped body
 ```
 
 The destination signature is:
@@ -107,6 +116,8 @@ The destination signature is:
 ```text
 HMAC-SHA256(signingSecret, timestamp + "." + rawBody)
 ```
+
+The forwarded body may differ from Meta's original request when a notification contains multiple entries or changes. The gateway verifies Meta's original signature, then signs each forwarded body with the endpoint's Meta app secret so existing receivers that verify `X-Hub-Signature-256` can accept it.
 
 Delivery behavior:
 
