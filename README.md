@@ -92,11 +92,11 @@ Supported destination types are `whatsapp` and `instagram`. Add more destination
 
 ## Instagram cutover
 
-1. Create an active Instagram endpoint and destination. Set the destination URL to the application's existing webhook route. Check `GET /v1/admin/endpoints` for the endpoint's `callbackPath` and `GET /v1/admin/destinations` for an active destination with `type: "instagram"`.
+1. Create an active Instagram endpoint and destination. For `chat-ai`, set the destination URL to its `/webhook/instagram` route and use the same Instagram App Secret as `chat-ai`'s `INSTAGRAM_APP_SECRET`. Check `GET /v1/admin/endpoints` for the endpoint's `callbackPath` and `GET /v1/admin/destinations` for an active destination with `type: "instagram"`.
 2. Start the API and worker, and check `GET /health/ready` on the public gateway host. Configure the Instagram webhook callback in Meta to `https://<gateway-host><callbackPath>` with the endpoint's verify token; subscribe to the Instagram fields used by the application. Meta's callback verification GET does not create an event.
 3. Send a real Instagram event. `GET /v1/admin/events` should contain it, then `GET /v1/admin/deliveries` should show a delivery that reaches `DELIVERED`. If events stay empty, inspect the callback URL and gateway HTTP response: unknown or inactive endpoint returns 404, and a bad signature or unexpected `object` returns 401. If events appear but deliveries stay empty, check that the Instagram destination is active.
 
-The Instagram endpoint currently accepts Meta payloads with `object: "instagram"`. If your current integration receives `object: "page"`, capture a sanitized sample first; Page messaging can also represent Facebook Messenger and must be routed deliberately.
+The Instagram endpoint accepts one `object: "instagram"` notification or an array of them, as shown in [Meta's Instagram webhook examples](https://developers.facebook.com/documentation/instagram-platform/webhooks/examples). It splits arrays into individual signed deliveries for the application. This endpoint rejects `object: "page"`.
 
 ## Delivery contract
 

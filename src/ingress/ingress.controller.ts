@@ -50,7 +50,7 @@ export class IngressController {
     @Param('publicKey') publicKey: string,
     @Headers('x-hub-signature-256') signature: string | undefined,
     @Req() request: RawBodyRequest<Request>,
-    @Body() payload: Record<string, unknown>,
+    @Body() payload: unknown,
   ) {
     if (!request.rawBody)
       throw new BadRequestException('Raw request body is required');

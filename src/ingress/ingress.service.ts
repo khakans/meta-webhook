@@ -79,6 +79,7 @@ function instagramScopes(payload: JsonObject): ScopedEvent[] {
     const changes = arrayValue(entry.changes).map(objectValue);
     const eventTypes = unique([
       ...(arrayValue(entry.messaging).length ? ['messaging'] : []),
+      stringValue(entry.field),
       ...changes.map((change) => stringValue(change.field)),
     ]);
     return {
@@ -133,22 +134,32 @@ export class IngressService {
     provider: string,
     publicKey: string,
     rawBody: string,
-    payload: JsonObject,
+    payload: unknown,
     signature: string | undefined,
   ) {
     const endpoint = await this.getEndpoint(provider, publicKey);
     this.verifyMetaSignature(endpoint, rawBody, signature);
-    if (payload.object !== providerObject(provider)) {
+    const envelopes =
+      provider === 'instagram' && Array.isArray(payload) ? payload : [payload];
+    if (
+      !envelopes.length ||
+      envelopes.some(
+        (item) => objectValue(item).object !== providerObject(provider),
+      )
+    ) {
       throw new UnauthorizedException(
         'Payload does not match endpoint provider',
       );
     }
 
-    const extracted =
-      provider === 'whatsapp'
-        ? whatsappScopes(payload)
-        : instagramScopes(payload);
-    const scopes = extracted.length ? extracted : [fallbackScope(payload)];
+    const scopes = envelopes.flatMap((item) => {
+      const envelope = item as JsonObject;
+      const extracted =
+        provider === 'whatsapp'
+          ? whatsappScopes(envelope)
+          : instagramScopes(envelope);
+      return extracted.length ? extracted : [fallbackScope(envelope)];
+    });
     let accepted = 0;
     let duplicates = 0;
     let deliveries = 0;
