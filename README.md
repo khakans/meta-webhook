@@ -40,6 +40,14 @@ bun run start:prod
 bun run start:worker
 ```
 
+When deploying a new build under systemd, restart **both** the API and worker
+services. Updating `dist/` alone leaves the worker running its previous code:
+
+```bash
+sudo systemctl restart meta-webhook.service meta-webhook-worker.service
+systemctl is-active meta-webhook.service meta-webhook-worker.service
+```
+
 Development commands:
 
 ```bash
@@ -92,9 +100,9 @@ Supported destination types are `whatsapp` and `instagram`. Add more destination
 
 ## Instagram cutover
 
-1. Create an active Instagram endpoint and destination. For `chat-ai`, set the destination URL to its `/webhook/instagram` route and use the same Instagram App Secret as `chat-ai`'s `INSTAGRAM_APP_SECRET`. Check `GET /v1/admin/endpoints` for the endpoint's `callbackPath` and `GET /v1/admin/destinations` for an active destination with `type: "instagram"`.
+1. Create an active Instagram endpoint and destination. For `chat-ai`, set the destination URL to its `/webhook/instagram` route. Set the endpoint's `appSecret` to the **Instagram App Secret** used by `chat-ai` as `INSTAGRAM_APP_SECRET`; the Facebook Business app secret is a separate credential. The gateway uses this secret both to verify Meta's incoming signature and to sign the scoped payload sent to `chat-ai`. Check `GET /v1/admin/endpoints` for the endpoint's `callbackPath` and `GET /v1/admin/destinations` for an active destination with `type: "instagram"`.
 2. Start the API and worker, and check `GET /health/ready` on the public gateway host. Configure the Instagram webhook callback in Meta to `https://<gateway-host><callbackPath>` with the endpoint's verify token; subscribe to the Instagram fields used by the application. Meta's callback verification GET does not create an event.
-3. Send a real Instagram event. `GET /v1/admin/events` should contain it, then `GET /v1/admin/deliveries` should show a delivery that reaches `DELIVERED`. If events stay empty, inspect the callback URL and gateway HTTP response: unknown or inactive endpoint returns 404, and a bad signature or unexpected `object` returns 401. If events appear but deliveries stay empty, check that the Instagram destination is active.
+3. Send a real Instagram event. `GET /v1/admin/events` should contain it, then `GET /v1/admin/deliveries` should show a delivery that reaches `DELIVERED`. If events stay empty, inspect the callback URL and gateway HTTP response: unknown or inactive endpoint returns 404, and a bad signature or unexpected `object` returns 401. A successful Meta verification GET only confirms the verify token; it does not test `appSecret`. If events appear but deliveries stay empty, check that the Instagram destination is active. If deliveries return 403, confirm that the running worker sends `X-Hub-Signature-256` and was restarted after the latest build.
 
 The Instagram endpoint accepts one `object: "instagram"` notification or an array of them, as shown in [Meta's Instagram webhook examples](https://developers.facebook.com/documentation/instagram-platform/webhooks/examples). It splits arrays into individual signed deliveries for the application. This endpoint rejects `object: "page"`.
 
